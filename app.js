@@ -47,6 +47,7 @@ const seedAssets = [
   status: row[14],
   rationale: row[15],
   notes: "",
+  performance: null,
   visual: "",
   visualName: ""
 }));
@@ -73,7 +74,8 @@ const els = {
   statusFilter: document.getElementById("statusFilter"),
   formatFilter: document.getElementById("formatFilter"),
   priorityFilter: document.getElementById("priorityFilter"),
-  missingVisualOnly: document.getElementById("missingVisualOnly")
+  missingVisualOnly: document.getElementById("missingVisualOnly"),
+  metaCsvInput: document.getElementById("metaCsvInput")
 };
 
 function loadAssets() {
@@ -124,6 +126,8 @@ function bindActions() {
     showToast("Pipeline ripristinata.");
   });
 
+  document.getElementById("importMetaCsv").addEventListener("click", () => els.metaCsvInput.click());
+  els.metaCsvInput.addEventListener("change", handleMetaCsvImport);
   document.getElementById("exportJson").addEventListener("click", exportJson);
   document.getElementById("exportCsv").addEventListener("click", exportCsv);
 }
@@ -172,6 +176,7 @@ function renderKpis() {
   setText("kpiWip", assets.filter((asset) => asset.status === "Work in progress").length);
   setText("kpiVisuals", assets.filter((asset) => asset.visual).length);
   setText("kpiHigh", open.filter((asset) => asset.priority === "High").length);
+  setText("kpiPerf", assets.filter((asset) => asset.performance).length);
 }
 
 function renderRows() {
@@ -192,6 +197,7 @@ function renderRows() {
       <td>${escapeHtml(asset.assignee || "-")}</td>
       <td><span class="pill ${asset.status.toLowerCase().replaceAll(" ", "-")}">${escapeHtml(asset.status)}</span></td>
       <td>${escapeHtml(asset.deadline || "-")}</td>
+      <td><span class="perf-badge ${asset.performance ? "has-data" : ""}">${asset.performance ? escapeHtml(asset.performance.badge) : "-"}</span></td>
       <td><span class="visual-dot">${asset.visual ? `<img src="${asset.visual}" alt="">` : "..."}</span></td>
     </tr>
   `).join("");
@@ -230,6 +236,7 @@ function renderDetail() {
       </div>
       <p class="notes"><strong>Hook:</strong> ${escapeHtml(asset.hook || "-")}</p>
       <p class="notes"><strong>Rationale:</strong> ${escapeHtml(asset.rationale || "-")}</p>
+      ${performanceTemplate(asset)}
       <div class="detail-controls">
         <label class="field">
           <span>Status</span>
@@ -270,6 +277,27 @@ function uploadTemplate(id) {
 
 function metaItem(label, value) {
   return `<div class="meta-item"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value || "-")}</strong></div>`;
+}
+
+function performanceTemplate(asset) {
+  if (!asset.performance) {
+    return `<p class="notes"><strong>Performance:</strong> Nessun dato Meta importato per questa riga.</p>`;
+  }
+
+  const perf = asset.performance;
+  return `
+    <div class="perf-strip">
+      ${performanceMetric("Spend", formatMetric(perf.spend, "currency"))}
+      ${performanceMetric("CPM", formatMetric(perf.cpm, "currency"))}
+      ${performanceMetric("CTR", formatMetric(perf.ctr, "percent"))}
+      ${performanceMetric("CPR", formatMetric(perf.cpr, "currency"))}
+    </div>
+    <p class="notes"><strong>Insight:</strong> ${escapeHtml(perf.insight)}</p>
+  `;
+}
+
+function performanceMetric(label, value) {
+  return `<div class="perf-metric"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value || "-")}</strong></div>`;
 }
 
 function bindDetailControls(asset) {
@@ -313,6 +341,7 @@ function renderAnalytics() {
   renderScorecard();
   renderMixChart();
   renderPriorities();
+  renderPerformanceInsights();
 }
 
 function renderScorecard() {
@@ -358,6 +387,43 @@ function renderPriorities() {
   `).join("");
 }
 
+function renderPerformanceInsights() {
+  const matched = assets.filter((asset) => asset.performance);
+  const summary = document.getElementById("performanceSummary");
+  const container = document.getElementById("performanceInsights");
+
+  if (!matched.length) {
+    summary.textContent = "Nessun CSV importato";
+    container.innerHTML = `
+      <article class="performance-card">
+        <strong>Import pronto</strong>
+        <p>Usa il pulsante Import Meta CSV. L'app fara match sugli ad name e salvera le metriche nel browser.</p>
+      </article>
+    `;
+    return;
+  }
+
+  const winners = matched.filter((asset) => asset.performance.badge === "WIN").length;
+  const watch = matched.filter((asset) => asset.performance.badge === "WATCH").length;
+  const pause = matched.filter((asset) => asset.performance.badge === "PAUSE").length;
+  const totalSpend = matched.reduce((sum, asset) => sum + (asset.performance.spend || 0), 0);
+  const top = [...matched].sort((a, b) => (b.performance.spend || 0) - (a.performance.spend || 0)).slice(0, 3);
+
+  summary.textContent = `${matched.length} asset matchati · ${formatMetric(totalSpend, "currency")} spend`;
+  container.innerHTML = `
+    <article class="performance-card">
+      <strong>${winners} winner · ${watch} da osservare · ${pause} da pausare</strong>
+      <p>Badge generati da CPR, spend e risultati importati dal CSV Meta.</p>
+    </article>
+    ${top.map((asset) => `
+      <article class="performance-card">
+        <strong>${escapeHtml(asset.assetName)}</strong>
+        <p>${escapeHtml(asset.performance.badge)} · ${formatMetric(asset.performance.spend, "currency")} spend · ${formatMetric(asset.performance.cpr, "currency")} CPR</p>
+      </article>
+    `).join("")}
+  `;
+}
+
 function renderVisualLibrary() {
   const withVisual = assets.filter((asset) => asset.visual);
   document.getElementById("libraryCount").textContent = `${withVisual.length} visual`;
@@ -373,14 +439,178 @@ function renderVisualLibrary() {
   `).join("") : `<article class="priority-card"><strong>Nessun visual caricato.</strong><p>Apri Produzione e carica un'immagine su una riga specifica.</p></article>`;
 }
 
+function handleMetaCsvImport(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    const rows = parseCsv(String(reader.result || ""));
+    const result = applyMetaRows(rows, file.name);
+    saveAssets();
+    render();
+    showToast(`${result.matched} asset matchati da ${file.name}.`);
+    els.metaCsvInput.value = "";
+  };
+  reader.readAsText(file);
+}
+
+function applyMetaRows(rows, fileName) {
+  const matchedAssetIds = new Set();
+  rows.forEach((row) => {
+    const adName = findValue(row, ["ad name", "ad_name", "ad", "nome inserzione", "inserzione"]);
+    if (!adName) return;
+
+    const asset = findAssetByAdName(adName);
+    if (!asset) return;
+
+    const performance = normalizePerformance(row, adName, fileName);
+    asset.performance = performance;
+    matchedAssetIds.add(asset.id);
+  });
+
+  return { matched: matchedAssetIds.size };
+}
+
+function findAssetByAdName(adName) {
+  const normalizedAdName = normalizeKey(adName);
+  return assets.find((asset) => {
+    const naming = normalizeKey(asset.naming);
+    const assetName = normalizeKey(asset.assetName);
+    return normalizedAdName === naming || normalizedAdName.includes(naming) || naming.includes(normalizedAdName) || normalizedAdName.includes(assetName);
+  });
+}
+
+function normalizePerformance(row, adName, fileName) {
+  const spend = parseNumber(findValue(row, ["amount spent", "spend", "importo speso", "spesa"]));
+  const impressions = parseNumber(findValue(row, ["impressions", "impression", "visualizzazioni"]));
+  const cpm = parseNumber(findValue(row, ["cpm", "cpm (cost per 1,000 impressions)"]));
+  const ctr = parseNumber(findValue(row, ["ctr", "ctr (link click-through rate)", "link ctr"]));
+  const results = parseNumber(findValue(row, ["results", "risultati", "website purchases", "purchases", "acquisti"]));
+  const cpr = parseNumber(findValue(row, ["cost per result", "costo per risultato", "cost per purchase", "cpa"]));
+  const video25 = parseNumber(findValue(row, ["video plays at 25%", "video played at 25%", "25% video plays", "video 25%"]));
+  const badge = performanceBadge({ spend, results, cpr });
+
+  return {
+    adName,
+    importedFrom: fileName,
+    importedAt: new Date().toISOString(),
+    spend,
+    impressions,
+    cpm,
+    ctr,
+    results,
+    cpr,
+    video25,
+    badge,
+    insight: performanceInsight({ spend, results, cpr, cpm, ctr, video25, badge })
+  };
+}
+
+function performanceBadge(perf) {
+  if ((perf.results || 0) >= 20 && perf.cpr && perf.cpr <= 20) return "WIN";
+  if ((perf.spend || 0) >= 300 && (!perf.results || (perf.cpr && perf.cpr >= 70))) return "PAUSE";
+  if ((perf.spend || 0) < 100) return "LOW";
+  return "WATCH";
+}
+
+function performanceInsight(perf) {
+  if (perf.badge === "WIN") return "Segnale forte: risultati solidi e CPR sotto soglia. Candidato per scaling o adattamento su altri placement.";
+  if (perf.badge === "PAUSE") return "Spesa significativa con ritorno debole. Da rivedere visual, hook o funnel prima di continuare.";
+  if (perf.badge === "LOW") return "Dato ancora immaturo: serve piu spend prima di decidere.";
+  if (perf.video25 && perf.video25 > 0 && (!perf.results || perf.results < 5)) return "Retention presente ma conversione debole: utile per learning creativo, meno per scaling conversion.";
+  return "Da monitorare nel prossimo export: performance non estrema, utile confronto con benchmark formato/funnel.";
+}
+
+function parseCsv(text) {
+  const lines = [];
+  let row = [];
+  let cell = "";
+  let insideQuotes = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    const next = text[index + 1];
+
+    if (char === '"' && insideQuotes && next === '"') {
+      cell += '"';
+      index += 1;
+    } else if (char === '"') {
+      insideQuotes = !insideQuotes;
+    } else if (char === "," && !insideQuotes) {
+      row.push(cell);
+      cell = "";
+    } else if ((char === "\n" || char === "\r") && !insideQuotes) {
+      if (char === "\r" && next === "\n") index += 1;
+      row.push(cell);
+      if (row.some((value) => value.trim())) lines.push(row);
+      row = [];
+      cell = "";
+    } else {
+      cell += char;
+    }
+  }
+
+  row.push(cell);
+  if (row.some((value) => value.trim())) lines.push(row);
+  if (lines.length < 2) return [];
+
+  const headers = lines[0].map((header) => normalizeHeader(header));
+  return lines.slice(1).map((line) => headers.reduce((acc, header, index) => {
+    acc[header] = line[index] || "";
+    return acc;
+  }, {}));
+}
+
+function findValue(row, candidates) {
+  const normalizedCandidates = candidates.map(normalizeHeader);
+  const key = normalizedCandidates.find((candidate) => row[candidate] !== undefined && row[candidate] !== "");
+  return key ? row[key] : "";
+}
+
+function normalizeHeader(value) {
+  return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function normalizeKey(value) {
+  return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+}
+
+function parseNumber(value) {
+  if (value === undefined || value === null || value === "") return null;
+  const normalized = String(value)
+    .replace(/[€$%]/g, "")
+    .replace(/\s/g, "")
+    .replace(/\.(?=\d{3}(\D|$))/g, "")
+    .replace(",", ".");
+  const number = Number.parseFloat(normalized);
+  return Number.isFinite(number) ? number : null;
+}
+
+function formatMetric(value, type) {
+  if (value === null || value === undefined || Number.isNaN(value)) return "-";
+  if (type === "currency") return `EUR ${Number(value).toLocaleString("it-IT", { maximumFractionDigits: 2 })}`;
+  if (type === "percent") return `${Number(value).toLocaleString("it-IT", { maximumFractionDigits: 2 })}%`;
+  return Number(value).toLocaleString("it-IT", { maximumFractionDigits: 2 });
+}
+
 function exportJson() {
   downloadFile(`dalfilo-creative-hub-${dateStamp()}.json`, JSON.stringify({ assets, exportedAt: new Date().toISOString() }, null, 2), "application/json");
   showToast("JSON esportato.");
 }
 
 function exportCsv() {
-  const headers = ["campaign", "goLive", "deadline", "priority", "campaignType", "assetName", "format", "creativeType", "productCategory", "hook", "funnel", "landing", "naming", "assignee", "status", "rationale", "notes", "visualName"];
+  const headers = ["campaign", "goLive", "deadline", "priority", "campaignType", "assetName", "format", "creativeType", "productCategory", "hook", "funnel", "landing", "naming", "assignee", "status", "rationale", "notes", "visualName", "performanceBadge", "spend", "cpm", "ctr", "results", "cpr"];
   const rows = [headers, ...assets.map((asset) => headers.map((key) => asset[key] || ""))];
+  rows.slice(1).forEach((row, index) => {
+    const perf = assets[index].performance || {};
+    row[18] = perf.badge || "";
+    row[19] = perf.spend || "";
+    row[20] = perf.cpm || "";
+    row[21] = perf.ctr || "";
+    row[22] = perf.results || "";
+    row[23] = perf.cpr || "";
+  });
   const csv = rows.map((row) => row.map(csvCell).join(",")).join("\n");
   downloadFile(`dalfilo-creative-pipeline-${dateStamp()}.csv`, csv, "text/csv");
   showToast("CSV esportato.");

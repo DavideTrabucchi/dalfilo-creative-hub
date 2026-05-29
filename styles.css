@@ -201,7 +201,7 @@ button {
 
 .kpis {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 1px;
   margin-bottom: 1rem;
   border: 1px solid var(--line);
@@ -440,6 +440,50 @@ tbody tr.is-selected {
   font-weight: 900;
 }
 
+.perf-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 2.6rem;
+  min-height: 1.8rem;
+  border-radius: 0.35rem;
+  color: var(--muted);
+  background: var(--panel-warm);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.perf-badge.has-data {
+  color: #285b3f;
+  background: #e4efe5;
+}
+
+.perf-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.perf-metric {
+  padding: 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 0.45rem;
+  background: var(--panel);
+}
+
+.perf-metric span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.perf-metric strong {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.98rem;
+}
+
 .visual-dot img {
   width: 100%;
   height: 100%;
@@ -587,10 +631,33 @@ tbody tr.is-selected {
 
 .bar-list,
 .priority-list,
-.recommendations {
+.recommendations,
+.performance-grid {
   display: grid;
   gap: 0.75rem;
   padding: 1rem;
+}
+
+.performance-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.performance-card {
+  padding: 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 0.45rem;
+  background: var(--panel);
+}
+
+.performance-card strong {
+  display: block;
+  margin-bottom: 0.4rem;
+}
+
+.performance-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
 }
 
 .bar-row {
@@ -724,6 +791,7 @@ tbody tr.is-selected {
 
   .kpis,
   .scorecard,
+  .performance-grid,
   .visual-library {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -743,6 +811,8 @@ tbody tr.is-selected {
   .toolbar,
   .kpis,
   .scorecard,
+  .performance-grid,
+  .perf-strip,
   .visual-library,
   .meta-grid,
   .detail-controls {

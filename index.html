@@ -37,9 +37,11 @@
             <h2>Hub operativo ADV Creative</h2>
           </div>
           <div class="actions">
+            <button class="ghost-button" type="button" id="importMetaCsv" title="Importa export CSV da Meta Ads">Import Meta CSV</button>
             <button class="ghost-button" type="button" id="resetData" title="Ripristina i dati iniziali">Reset</button>
             <button class="ghost-button" type="button" id="exportCsv" title="Esporta pipeline in CSV">CSV</button>
             <button class="primary-button" type="button" id="exportJson" title="Esporta stato completo con visual">JSON</button>
+            <input id="metaCsvInput" type="file" accept=".csv,text/csv" hidden />
           </div>
         </header>
 
@@ -63,6 +65,10 @@
           <article class="kpi accent">
             <span id="kpiHigh">0</span>
             <p>High priority aperti</p>
+          </article>
+          <article class="kpi">
+            <span id="kpiPerf">0</span>
+            <p>Performance match</p>
           </article>
         </section>
 
@@ -105,6 +111,7 @@
                       <th>Owner</th>
                       <th>Status</th>
                       <th>Deadline</th>
+                      <th>Perf.</th>
                       <th>Visual</th>
                     </tr>
                   </thead>
@@ -145,6 +152,13 @@
                 <span>azioni immediate</span>
               </div>
               <div id="priorityList" class="priority-list"></div>
+            </article>
+            <article class="insight-panel wide">
+              <div class="panel-heading">
+                <h3>Meta Performance Import</h3>
+                <span id="performanceSummary">Nessun CSV importato</span>
+              </div>
+              <div id="performanceInsights" class="performance-grid"></div>
             </article>
             <article class="insight-panel wide">
               <div class="panel-heading">
