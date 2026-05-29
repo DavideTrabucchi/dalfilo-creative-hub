@@ -75,8 +75,12 @@ const els = {
   formatFilter: document.getElementById("formatFilter"),
   priorityFilter: document.getElementById("priorityFilter"),
   missingVisualOnly: document.getElementById("missingVisualOnly"),
-  metaCsvInput: document.getElementById("metaCsvInput")
+  metaCsvInput: document.getElementById("metaCsvInput"),
+  assetDrawer: document.getElementById("assetDrawer"),
+  assetForm: document.getElementById("assetForm")
 };
+
+let namingTouched = false;
 
 function loadAssets() {
   const saved = localStorage.getItem(storageKey);
@@ -128,6 +132,17 @@ function bindActions() {
 
   document.getElementById("importMetaCsv").addEventListener("click", () => els.metaCsvInput.click());
   els.metaCsvInput.addEventListener("change", handleMetaCsvImport);
+  document.getElementById("newAssetButton").addEventListener("click", openNewAssetDrawer);
+  els.assetForm.addEventListener("submit", handleAssetSubmit);
+  els.assetForm.naming.addEventListener("input", () => {
+    namingTouched = true;
+  });
+  ["campaign", "assetName", "format", "creativeType", "productCategory", "funnel", "landing"].forEach((name) => {
+    els.assetForm[name].addEventListener("input", updateGeneratedNaming);
+  });
+  document.querySelectorAll("[data-close-drawer]").forEach((button) => {
+    button.addEventListener("click", closeAssetDrawer);
+  });
   document.getElementById("exportJson").addEventListener("click", exportJson);
   document.getElementById("exportCsv").addEventListener("click", exportCsv);
 }
@@ -254,6 +269,7 @@ function renderDetail() {
         </label>
       </div>
       <div class="actions">
+        <button class="ghost-button" type="button" id="duplicateAsset">Duplica asset</button>
         ${asset.visual ? `<button class="ghost-button" type="button" id="replaceVisual">Sostituisci visual</button><button class="ghost-button" type="button" id="removeVisual">Rimuovi visual</button>` : ""}
         <input id="hiddenVisualInput" type="file" accept="image/*" hidden>
       </div>
@@ -316,11 +332,191 @@ function bindDetailControls(asset) {
   input.addEventListener("change", (event) => handleVisualUpload(event, asset));
 
   document.getElementById("replaceVisual")?.addEventListener("click", () => document.getElementById("hiddenVisualInput").click());
+  document.getElementById("duplicateAsset")?.addEventListener("click", () => duplicateAsset(asset));
   document.getElementById("removeVisual")?.addEventListener("click", () => {
     update({ visual: "", visualName: "" });
     renderDetail();
     showToast("Visual rimosso.");
   });
+}
+
+function openNewAssetDrawer(prefill = {}) {
+  namingTouched = Boolean(prefill.naming);
+  els.assetForm.reset();
+  Object.entries({
+    priority: "High",
+    status: "Draft",
+    format: "Video",
+    creativeType: "UGC",
+    funnel: "pr_",
+    landing: "hp",
+    assignee: "Federica",
+    ...prefill
+  }).forEach(([key, value]) => {
+    if (els.assetForm[key] && key !== "visualFile") els.assetForm[key].value = value || "";
+  });
+  if (!namingTouched) updateGeneratedNaming();
+  els.assetDrawer.hidden = false;
+  els.assetForm.campaign.focus();
+}
+
+function closeAssetDrawer() {
+  els.assetDrawer.hidden = true;
+}
+
+function handleAssetSubmit(event) {
+  event.preventDefault();
+  const formData = new FormData(els.assetForm);
+  const asset = buildAssetFromForm(formData);
+  const file = formData.get("visualFile");
+
+  const finish = () => {
+    assets.unshift(asset);
+    selectedId = asset.id;
+    saveAssets();
+    populateFilters();
+    closeAssetDrawer();
+    currentView = "production";
+    showProductionView();
+    render();
+    showToast("Asset creato in pipeline.");
+  };
+
+  if (file && file.size) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      asset.visual = reader.result;
+      asset.visualName = file.name;
+      finish();
+    };
+    reader.readAsDataURL(file);
+  } else {
+    finish();
+  }
+}
+
+function buildAssetFromForm(formData) {
+  return {
+    id: makeAssetId(),
+    campaign: String(formData.get("campaign") || "").trim(),
+    goLive: String(formData.get("goLive") || "").trim(),
+    deadline: String(formData.get("deadline") || "").trim(),
+    priority: String(formData.get("priority") || "High"),
+    campaignType: String(formData.get("campaignType") || "").trim(),
+    assetName: String(formData.get("assetName") || "").trim(),
+    format: String(formData.get("format") || "Video"),
+    creativeType: String(formData.get("creativeType") || "UGC"),
+    productCategory: String(formData.get("productCategory") || "").trim(),
+    hook: String(formData.get("hook") || "").trim(),
+    funnel: String(formData.get("funnel") || "pr_"),
+    landing: String(formData.get("landing") || "hp"),
+    naming: String(formData.get("naming") || "").trim() || generateNamingFromForm(),
+    assignee: String(formData.get("assignee") || "").trim(),
+    status: String(formData.get("status") || "Draft"),
+    rationale: String(formData.get("rationale") || "").trim(),
+    notes: "",
+    performance: null,
+    visual: "",
+    visualName: ""
+  };
+}
+
+function updateGeneratedNaming() {
+  if (namingTouched) return;
+  els.assetForm.naming.value = generateNamingFromForm();
+}
+
+function generateNamingFromForm() {
+  const form = els.assetForm;
+  const funnel = String(form.funnel.value || "pr_").split("+")[0].trim().replace("_", "");
+  const category = categoryCode(form.productCategory.value || form.assetName.value);
+  const format = formatCode(form.format.value);
+  const creative = creativeCode(form.creativeType.value);
+  const campaign = shortSlug(form.campaign.value || "campaign", 18);
+  const concept = shortSlug(form.assetName.value || "asset", 20);
+  const landing = String(form.landing.value || "hp").split("/")[0].trim();
+  return `${funnel}_it_${category}_${format}_${creative}_${campaign}_${concept}_v1_${landing}`.replace(/_+/g, "_");
+}
+
+function duplicateAsset(asset) {
+  openNewAssetDrawer({
+    campaign: asset.campaign,
+    goLive: asset.goLive,
+    deadline: asset.deadline,
+    priority: asset.priority,
+    campaignType: asset.campaignType,
+    assetName: uniqueCopyName(asset.assetName),
+    format: asset.format,
+    creativeType: asset.creativeType,
+    productCategory: asset.productCategory,
+    hook: asset.hook,
+    funnel: asset.funnel,
+    landing: asset.landing,
+    naming: incrementVersion(asset.naming),
+    assignee: asset.assignee,
+    status: "Draft",
+    rationale: asset.rationale
+  });
+  namingTouched = true;
+  showToast("Asset duplicato: modifica e salva.");
+}
+
+function uniqueCopyName(assetName) {
+  const base = `${assetName} copy`;
+  let candidate = base;
+  let counter = 2;
+  while (assets.some((asset) => asset.assetName === candidate)) {
+    candidate = `${base} ${counter}`;
+    counter += 1;
+  }
+  return candidate;
+}
+
+function makeAssetId() {
+  return `asset-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+}
+
+function incrementVersion(naming) {
+  if (!naming) return "";
+  const match = naming.match(/_v(\d+)_/);
+  if (!match) return `${naming}_copy`;
+  const next = String(Number(match[1]) + 1);
+  return naming.replace(`_v${match[1]}_`, `_v${next}_`);
+}
+
+function showProductionView() {
+  document.querySelectorAll(".nav-item").forEach((item) => item.classList.toggle("is-active", item.dataset.view === "production"));
+  document.querySelectorAll(".view").forEach((view) => view.classList.remove("is-active"));
+  document.getElementById("productionView").classList.add("is-active");
+}
+
+function categoryCode(value) {
+  const text = String(value || "").toLowerCase();
+  if (text.includes("bath") || text.includes("bagno") || text.includes("sport")) return "bath";
+  if (text.includes("mixed") || text.includes("mix")) return "mixed";
+  if (text.includes("duvet") || text.includes("copripiumino")) return "duvet";
+  return "bed";
+}
+
+function formatCode(value) {
+  return String(value || "Video").toLowerCase().replace("static", "static").replace("carousel", "carousel").replace("gif", "gif").replace("video", "video");
+}
+
+function creativeCode(value) {
+  const text = String(value || "").toLowerCase();
+  if (text.includes("ai")) return "ai";
+  if (text.includes("ugc")) return "ugc";
+  return "brand";
+}
+
+function shortSlug(value, maxLength) {
+  return normalizeKey(value)
+    .split("_")
+    .filter(Boolean)
+    .slice(0, 5)
+    .join("_")
+    .slice(0, maxLength)
+    .replace(/_+$/g, "") || "asset";
 }
 
 function handleVisualUpload(event, asset) {

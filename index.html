@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Dalfilo Creative Hub</title>
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=20260529d" />
   </head>
   <body>
     <div class="app-shell">
@@ -37,6 +37,7 @@
             <h2>Hub operativo ADV Creative</h2>
           </div>
           <div class="actions">
+            <button class="primary-button" type="button" id="newAssetButton" title="Crea un nuovo asset in produzione">+ Nuovo asset</button>
             <button class="ghost-button" type="button" id="importMetaCsv" title="Importa export CSV da Meta Ads">Import Meta CSV</button>
             <button class="ghost-button" type="button" id="resetData" title="Ripristina i dati iniziali">Reset</button>
             <button class="ghost-button" type="button" id="exportCsv" title="Esporta pipeline in CSV">CSV</button>
@@ -184,7 +185,135 @@
       </main>
     </div>
 
+    <div class="asset-drawer" id="assetDrawer" hidden>
+      <div class="drawer-backdrop" data-close-drawer></div>
+      <aside class="drawer-panel" aria-label="Nuovo asset">
+        <form id="assetForm">
+          <header class="drawer-header">
+            <div>
+              <p class="eyebrow">Creative intake</p>
+              <h3 id="drawerTitle">Nuovo asset</h3>
+            </div>
+            <button class="icon-close" type="button" data-close-drawer aria-label="Chiudi">×</button>
+          </header>
+
+          <div class="drawer-body">
+            <label class="field full">
+              <span>Campaign / Moment</span>
+              <input name="campaign" type="text" required placeholder="Es. Summer Sale 2026 — W29 Free Embroidery">
+            </label>
+            <div class="drawer-grid">
+              <label class="field">
+                <span>Go live</span>
+                <input name="goLive" type="text" placeholder="26/06">
+              </label>
+              <label class="field">
+                <span>Deadline</span>
+                <input name="deadline" type="text" placeholder="25/06/2026">
+              </label>
+            </div>
+            <label class="field full">
+              <span>Asset name</span>
+              <input name="assetName" type="text" required placeholder="Es. Percalle Botanica — UGC texture Malva">
+            </label>
+            <div class="drawer-grid">
+              <label class="field">
+                <span>Priority</span>
+                <select name="priority">
+                  <option>High</option>
+                  <option>Medium</option>
+                  <option>Low</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Status</span>
+                <select name="status">
+                  <option>Draft</option>
+                  <option>Work in progress</option>
+                  <option>Review</option>
+                  <option>Ready</option>
+                  <option>Done</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Format</span>
+                <select name="format">
+                  <option>Video</option>
+                  <option>Static</option>
+                  <option>GIF</option>
+                  <option>Carousel</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Creative type</span>
+                <select name="creativeType">
+                  <option>UGC</option>
+                  <option>Brand</option>
+                  <option>UGC+AI</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Product category</span>
+                <input name="productCategory" type="text" placeholder="Percalle">
+              </label>
+              <label class="field">
+                <span>Campaign type</span>
+                <input name="campaignType" type="text" placeholder="Product Launch">
+              </label>
+              <label class="field">
+                <span>Funnel</span>
+                <select name="funnel">
+                  <option>pr_</option>
+                  <option>rm_</option>
+                  <option>rt_</option>
+                  <option>pr_ + rm_</option>
+                  <option>rm_ + rt_</option>
+                  <option>pr_ + rm_ + rt_</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Landing</span>
+                <select name="landing">
+                  <option>hp</option>
+                  <option>pdp</option>
+                  <option>plp</option>
+                  <option>hp/pdp</option>
+                </select>
+              </label>
+            </div>
+            <label class="field full">
+              <span>Hook first 2 sec</span>
+              <textarea name="hook" rows="3" placeholder="Il primo frame, la promessa, il gesto o il testo che deve fermare lo scroll."></textarea>
+            </label>
+            <label class="field full">
+              <span>Naming convention</span>
+              <input name="naming" type="text" placeholder="Generato automaticamente">
+            </label>
+            <div class="drawer-grid">
+              <label class="field">
+                <span>Owner</span>
+                <input name="assignee" type="text" value="Federica">
+              </label>
+              <label class="field">
+                <span>Visual</span>
+                <input name="visualFile" type="file" accept="image/*">
+              </label>
+            </div>
+            <label class="field full">
+              <span>ADV rationale</span>
+              <textarea name="rationale" rows="4" placeholder="Perche produrlo: benchmark, learning, funnel gap, occasione commerciale."></textarea>
+            </label>
+          </div>
+
+          <footer class="drawer-footer">
+            <button class="ghost-button" type="button" data-close-drawer>Annulla</button>
+            <button class="primary-button" type="submit">Salva asset</button>
+          </footer>
+        </form>
+      </aside>
+    </div>
+
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="./app.js"></script>
+    <script src="./app.js?v=20260529d"></script>
   </body>
 </html>
