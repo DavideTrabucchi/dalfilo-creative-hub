@@ -63,6 +63,7 @@ const storageKey = "dalfilo-creative-hub-v1";
 let assets = loadAssets();
 let selectedId = assets[0]?.id || null;
 let currentView = "production";
+let editingAssetId = null;
 
 const els = {
   rows: document.getElementById("assetRows"),
@@ -269,6 +270,7 @@ function renderDetail() {
         </label>
       </div>
       <div class="actions">
+        <button class="primary-button" type="button" id="editAsset">Modifica asset</button>
         <button class="ghost-button" type="button" id="duplicateAsset">Duplica asset</button>
         ${asset.visual ? `<button class="ghost-button" type="button" id="replaceVisual">Sostituisci visual</button><button class="ghost-button" type="button" id="removeVisual">Rimuovi visual</button>` : ""}
         <input id="hiddenVisualInput" type="file" accept="image/*" hidden>
@@ -332,6 +334,7 @@ function bindDetailControls(asset) {
   input.addEventListener("change", (event) => handleVisualUpload(event, asset));
 
   document.getElementById("replaceVisual")?.addEventListener("click", () => document.getElementById("hiddenVisualInput").click());
+  document.getElementById("editAsset")?.addEventListener("click", () => openEditAssetDrawer(asset));
   document.getElementById("duplicateAsset")?.addEventListener("click", () => duplicateAsset(asset));
   document.getElementById("removeVisual")?.addEventListener("click", () => {
     update({ visual: "", visualName: "" });
@@ -341,6 +344,9 @@ function bindDetailControls(asset) {
 }
 
 function openNewAssetDrawer(prefill = {}) {
+  editingAssetId = null;
+  document.getElementById("drawerTitle").textContent = "Nuovo asset";
+  els.assetForm.querySelector('button[type="submit"]').textContent = "Salva asset";
   namingTouched = Boolean(prefill.naming);
   els.assetForm.reset();
   Object.entries({
@@ -360,18 +366,51 @@ function openNewAssetDrawer(prefill = {}) {
   els.assetForm.campaign.focus();
 }
 
+function openEditAssetDrawer(asset) {
+  editingAssetId = asset.id;
+  document.getElementById("drawerTitle").textContent = "Modifica asset";
+  els.assetForm.querySelector('button[type="submit"]').textContent = "Aggiorna asset";
+  openNewAssetDrawer({
+    campaign: asset.campaign,
+    goLive: asset.goLive,
+    deadline: asset.deadline,
+    priority: asset.priority,
+    status: asset.status,
+    format: asset.format,
+    creativeType: asset.creativeType,
+    productCategory: asset.productCategory,
+    campaignType: asset.campaignType,
+    funnel: asset.funnel,
+    landing: asset.landing,
+    assetName: asset.assetName,
+    hook: asset.hook,
+    naming: asset.naming,
+    assignee: asset.assignee,
+    rationale: asset.rationale
+  });
+  editingAssetId = asset.id;
+  document.getElementById("drawerTitle").textContent = "Modifica asset";
+  els.assetForm.querySelector('button[type="submit"]').textContent = "Aggiorna asset";
+}
+
 function closeAssetDrawer() {
   els.assetDrawer.hidden = true;
+  editingAssetId = null;
 }
 
 function handleAssetSubmit(event) {
   event.preventDefault();
   const formData = new FormData(els.assetForm);
-  const asset = buildAssetFromForm(formData);
+  const existingAsset = assets.find((asset) => asset.id === editingAssetId) || null;
+  const asset = buildAssetFromForm(formData, existingAsset);
   const file = formData.get("visualFile");
 
   const finish = () => {
-    assets.unshift(asset);
+    if (existingAsset) {
+      Object.assign(existingAsset, asset);
+    } else {
+      assets.unshift(asset);
+    }
     selectedId = asset.id;
     saveAssets();
     populateFilters();
@@ -379,7 +418,7 @@ function handleAssetSubmit(event) {
     currentView = "production";
     showProductionView();
     render();
-    showToast("Asset creato in pipeline.");
+    showToast(existingAsset ? "Asset aggiornato." : "Asset creato in pipeline.");
   };
 
   if (file && file.size) {
@@ -395,9 +434,9 @@ function handleAssetSubmit(event) {
   }
 }
 
-function buildAssetFromForm(formData) {
+function buildAssetFromForm(formData, existingAsset = null) {
   return {
-    id: makeAssetId(),
+    id: existingAsset?.id || makeAssetId(),
     campaign: String(formData.get("campaign") || "").trim(),
     goLive: String(formData.get("goLive") || "").trim(),
     deadline: String(formData.get("deadline") || "").trim(),
@@ -414,10 +453,10 @@ function buildAssetFromForm(formData) {
     assignee: String(formData.get("assignee") || "").trim(),
     status: String(formData.get("status") || "Draft"),
     rationale: String(formData.get("rationale") || "").trim(),
-    notes: "",
-    performance: null,
-    visual: "",
-    visualName: ""
+    notes: existingAsset?.notes || "",
+    performance: existingAsset?.performance || null,
+    visual: existingAsset?.visual || "",
+    visualName: existingAsset?.visualName || ""
   };
 }
 
