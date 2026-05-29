@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dalfilo Creative Hub</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="rail" aria-label="Navigazione">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">D</div>
+          <div>
+            <p class="eyebrow">Dalfilo</p>
+            <h1>Creative Hub</h1>
+          </div>
+        </div>
+
+        <nav class="nav">
+          <button class="nav-item is-active" type="button" data-view="production">Produzione</button>
+          <button class="nav-item" type="button" data-view="analytics">Analisi</button>
+          <button class="nav-item" type="button" data-view="visuals">Visual Library</button>
+        </nav>
+
+        <section class="sync-card">
+          <p class="eyebrow">Fonte</p>
+          <a href="https://docs.google.com/spreadsheets/d/1tp_ll9WE_uiV1Fy7wI7r_yUHo7cBE640XXKd0UKitws/edit?gid=2030630749#gid=2030630749" target="_blank" rel="noreferrer">Google Sheet ADV Pipeline</a>
+          <small>Snapshot locale con salvataggio nel browser. Pronto per collegamento Apps Script o API.</small>
+        </section>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Produzione + performance intelligence</p>
+            <h2>Hub operativo ADV Creative</h2>
+          </div>
+          <div class="actions">
+            <button class="ghost-button" type="button" id="resetData" title="Ripristina i dati iniziali">Reset</button>
+            <button class="ghost-button" type="button" id="exportCsv" title="Esporta pipeline in CSV">CSV</button>
+            <button class="primary-button" type="button" id="exportJson" title="Esporta stato completo con visual">JSON</button>
+          </div>
+        </header>
+
+        <section class="kpis" aria-label="KPI pipeline">
+          <article class="kpi">
+            <span id="kpiTotal">0</span>
+            <p>Asset totali</p>
+          </article>
+          <article class="kpi">
+            <span id="kpiDraft">0</span>
+            <p>Draft</p>
+          </article>
+          <article class="kpi">
+            <span id="kpiWip">0</span>
+            <p>Work in progress</p>
+          </article>
+          <article class="kpi">
+            <span id="kpiVisuals">0</span>
+            <p>Visual caricati</p>
+          </article>
+          <article class="kpi accent">
+            <span id="kpiHigh">0</span>
+            <p>High priority aperti</p>
+          </article>
+        </section>
+
+        <section class="toolbar" aria-label="Filtri">
+          <label class="field search-field">
+            <span>Cerca</span>
+            <input id="searchInput" type="search" placeholder="Asset, campagna, naming, hook..." />
+          </label>
+          <label class="field">
+            <span>Status</span>
+            <select id="statusFilter"></select>
+          </label>
+          <label class="field">
+            <span>Formato</span>
+            <select id="formatFilter"></select>
+          </label>
+          <label class="field">
+            <span>Priorità</span>
+            <select id="priorityFilter"></select>
+          </label>
+          <label class="toggle">
+            <input id="missingVisualOnly" type="checkbox" />
+            <span>Solo senza visual</span>
+          </label>
+        </section>
+
+        <section class="view is-active" id="productionView">
+          <div class="split-layout">
+            <section class="table-panel" aria-label="Pipeline creativa">
+              <div class="panel-heading">
+                <h3>Pipeline</h3>
+                <span id="resultCount"></span>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Asset</th>
+                      <th>Format</th>
+                      <th>Owner</th>
+                      <th>Status</th>
+                      <th>Deadline</th>
+                      <th>Visual</th>
+                    </tr>
+                  </thead>
+                  <tbody id="assetRows"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <aside class="detail-panel" aria-live="polite">
+              <div id="emptyDetail" class="empty-detail">
+                <p class="eyebrow">Seleziona una riga</p>
+                <h3>Brief, upload e learning in un unico punto.</h3>
+              </div>
+              <div id="assetDetail" class="asset-detail" hidden></div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="view" id="analyticsView">
+          <div class="analytics-grid">
+            <article class="insight-panel wide">
+              <div class="panel-heading">
+                <h3>Format Scorecard</h3>
+                <span>da pipeline + benchmark</span>
+              </div>
+              <div id="formatScorecard" class="scorecard"></div>
+            </article>
+            <article class="insight-panel">
+              <div class="panel-heading">
+                <h3>Production Mix</h3>
+                <span>asset aperti</span>
+              </div>
+              <div id="mixChart" class="bar-list"></div>
+            </article>
+            <article class="insight-panel">
+              <div class="panel-heading">
+                <h3>Priorità</h3>
+                <span>azioni immediate</span>
+              </div>
+              <div id="priorityList" class="priority-list"></div>
+            </article>
+            <article class="insight-panel wide">
+              <div class="panel-heading">
+                <h3>Raccomandazioni operative</h3>
+                <span>derivate dal report</span>
+              </div>
+              <div class="recommendations">
+                <p><strong>UGC primo asset da produrre.</strong> Botanica ha confermato che UGC su prospecting abbassa CPM e CPR rispetto al brand video sulla stessa audience fredda.</p>
+                <p><strong>GIF sempre in rt_.</strong> Il report statico mostra CPM GIF stabile e basso: ogni collection attiva dovrebbe avere almeno un loop retargeting.</p>
+                <p><strong>Carousel solo dove serve discovery.</strong> Tenere carousel su HP o warm audience, evitando cold PLP quando il CPR esplode.</p>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="view" id="visualsView">
+          <div class="panel-heading library-heading">
+            <h3>Visual Library</h3>
+            <span id="libraryCount"></span>
+          </div>
+          <div id="visualLibrary" class="visual-library"></div>
+        </section>
+      </main>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="./app.js"></script>
+  </body>
+</html>
