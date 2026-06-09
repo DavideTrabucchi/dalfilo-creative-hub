@@ -47,6 +47,10 @@ const seedAssets = [
   status: row[14],
   rationale: row[15],
   notes: "",
+  country: "",
+  cta: "",
+  prospectingMessage: "",
+  remarketingMessage: "",
   performance: null,
   visual: "",
   visualName: ""
@@ -76,6 +80,7 @@ const els = {
   formatFilter: document.getElementById("formatFilter"),
   priorityFilter: document.getElementById("priorityFilter"),
   missingVisualOnly: document.getElementById("missingVisualOnly"),
+  pipelineCsvInput: document.getElementById("pipelineCsvInput"),
   metaCsvInput: document.getElementById("metaCsvInput"),
   assetDrawer: document.getElementById("assetDrawer"),
   assetForm: document.getElementById("assetForm")
@@ -131,6 +136,8 @@ function bindActions() {
     showToast("Pipeline ripristinata.");
   });
 
+  document.getElementById("importPipelineCsv").addEventListener("click", () => els.pipelineCsvInput.click());
+  els.pipelineCsvInput.addEventListener("change", handlePipelineCsvImport);
   document.getElementById("importMetaCsv").addEventListener("click", () => els.metaCsvInput.click());
   els.metaCsvInput.addEventListener("change", handleMetaCsvImport);
   document.getElementById("newAssetButton").addEventListener("click", openNewAssetDrawer);
@@ -247,10 +254,12 @@ function renderDetail() {
         ${metaItem("Funnel", `${asset.funnel} / ${asset.landing}`)}
         ${metaItem("Go live", asset.goLive)}
         ${metaItem("Deadline", asset.deadline)}
+        ${metaItem("Country", asset.country)}
         ${metaItem("Owner", asset.assignee)}
         ${metaItem("Priorita", asset.priority)}
       </div>
       <p class="notes"><strong>Hook:</strong> ${escapeHtml(asset.hook || "-")}</p>
+      ${copyTemplate(asset)}
       <p class="notes"><strong>Rationale:</strong> ${escapeHtml(asset.rationale || "-")}</p>
       ${performanceTemplate(asset)}
       <div class="detail-controls">
@@ -318,6 +327,17 @@ function performanceMetric(label, value) {
   return `<div class="perf-metric"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value || "-")}</strong></div>`;
 }
 
+function copyTemplate(asset) {
+  if (!asset.cta && !asset.prospectingMessage && !asset.remarketingMessage) return "";
+  return `
+    <div class="copy-block">
+      ${asset.cta ? `<p><strong>CTA:</strong> ${escapeHtml(asset.cta)}</p>` : ""}
+      ${asset.prospectingMessage ? `<p><strong>Prospecting:</strong> ${escapeHtml(asset.prospectingMessage)}</p>` : ""}
+      ${asset.remarketingMessage ? `<p><strong>Remarketing:</strong> ${escapeHtml(asset.remarketingMessage)}</p>` : ""}
+    </div>
+  `;
+}
+
 function bindDetailControls(asset) {
   const update = (patch) => {
     Object.assign(asset, patch);
@@ -379,6 +399,10 @@ function openEditAssetDrawer(asset) {
     format: asset.format,
     creativeType: asset.creativeType,
     productCategory: asset.productCategory,
+    country: asset.country,
+    cta: asset.cta,
+    prospectingMessage: asset.prospectingMessage,
+    remarketingMessage: asset.remarketingMessage,
     campaignType: asset.campaignType,
     funnel: asset.funnel,
     landing: asset.landing,
@@ -446,7 +470,11 @@ function buildAssetFromForm(formData, existingAsset = null) {
     format: String(formData.get("format") || "Video"),
     creativeType: String(formData.get("creativeType") || "UGC"),
     productCategory: String(formData.get("productCategory") || "").trim(),
+    country: String(formData.get("country") || "").trim(),
     hook: String(formData.get("hook") || "").trim(),
+    cta: String(formData.get("cta") || "").trim(),
+    prospectingMessage: String(formData.get("prospectingMessage") || "").trim(),
+    remarketingMessage: String(formData.get("remarketingMessage") || "").trim(),
     funnel: String(formData.get("funnel") || "pr_"),
     landing: String(formData.get("landing") || "hp"),
     naming: String(formData.get("naming") || "").trim() || generateNamingFromForm(),
@@ -488,6 +516,10 @@ function duplicateAsset(asset) {
     format: asset.format,
     creativeType: asset.creativeType,
     productCategory: asset.productCategory,
+    country: asset.country,
+    cta: asset.cta,
+    prospectingMessage: asset.prospectingMessage,
+    remarketingMessage: asset.remarketingMessage,
     hook: asset.hook,
     funnel: asset.funnel,
     landing: asset.landing,
@@ -672,6 +704,127 @@ function renderVisualLibrary() {
       </div>
     </article>
   `).join("") : `<article class="priority-card"><strong>Nessun visual caricato.</strong><p>Apri Produzione e carica un'immagine su una riga specifica.</p></article>`;
+}
+
+function handlePipelineCsvImport(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    const rows = parseCsv(String(reader.result || ""));
+    const result = applyPipelineRows(rows);
+    saveAssets();
+    populateFilters();
+    render();
+    showToast(`${result.created} creati · ${result.updated} aggiornati da ${file.name}.`);
+    els.pipelineCsvInput.value = "";
+  };
+  reader.readAsText(file);
+}
+
+function applyPipelineRows(rows) {
+  let created = 0;
+  let updated = 0;
+
+  rows.map(normalizePipelineRow).filter(Boolean).forEach((incoming) => {
+    const existing = findAssetForPipelineImport(incoming);
+    if (existing) {
+      Object.assign(existing, {
+        ...incoming,
+        id: existing.id,
+        notes: existing.notes || incoming.notes || "",
+        performance: existing.performance || null,
+        visual: existing.visual || "",
+        visualName: existing.visualName || ""
+      });
+      updated += 1;
+    } else {
+      assets.unshift(incoming);
+      created += 1;
+    }
+  });
+
+  selectedId = assets[0]?.id || null;
+  return { created, updated };
+}
+
+function normalizePipelineRow(row) {
+  const assetName = findValue(row, ["asset name", "asset", "creative", "creative name", "nome asset", "contenuto"]);
+  const campaign = findValue(row, ["campaign / moment", "campaign", "moment", "campagna", "fase", "initiative"]);
+  const naming = findValue(row, ["naming convention", "naming", "ad name", "ad_name", "nome inserzione"]);
+
+  if (!assetName && !campaign && !naming) return null;
+
+  return {
+    id: makeAssetId(),
+    campaign: campaign || "Imported pipeline",
+    goLive: findValue(row, ["go live", "go-live", "live date", "data live", "start", "launch date"]),
+    deadline: findValue(row, ["deadline", "due date", "scadenza", "delivery date"]),
+    country: findValue(row, ["country", "paese", "market", "mercato"]),
+    priority: normalizePriority(findValue(row, ["priority", "priorita", "priorità"])),
+    campaignType: findValue(row, ["campaign type", "type", "tipologia campagna", "objective"]),
+    assetName: assetName || naming || "Imported asset",
+    format: normalizeFormat(findValue(row, ["format", "formato", "asset format"])),
+    creativeType: normalizeCreativeType(findValue(row, ["creative type", "tipo creativo", "creative", "creator type"])),
+    productCategory: findValue(row, ["product category", "categoria prodotto", "category", "product", "prodotto"]),
+    hook: findValue(row, ["hook direction", "hook", "first 2 sec", "first 2 seconds", "hook first 2 sec"]),
+    cta: findValue(row, ["cta", "call to action", "call-to-action"]),
+    prospectingMessage: findValue(row, ["prospecting", "copy prospecting", "message prospecting", "messaggio prospecting", "pr copy", "pr_ copy"]),
+    remarketingMessage: findValue(row, ["remarketing", "copy remarketing", "message remarketing", "messaggio remarketing", "rm copy", "rm_ copy"]),
+    funnel: findValue(row, ["funnel", "funnel stage", "pr/rm/rt", "funnel pr/rm/rt"]) || "pr_",
+    landing: findValue(row, ["landing", "landing page", "pdp/hp/plp", "lp"]) || "hp",
+    naming: naming || "",
+    assignee: findValue(row, ["assignee", "owner", "responsabile", "asana assignee"]) || "Federica",
+    status: normalizeStatus(findValue(row, ["status", "stato"])),
+    rationale: findValue(row, ["adv rationale", "rationale", "meta rationale", "insight", "notes", "note"]),
+    notes: "",
+    performance: null,
+    visual: "",
+    visualName: ""
+  };
+}
+
+function findAssetForPipelineImport(incoming) {
+  const naming = normalizeKey(incoming.naming);
+  if (naming) {
+    const byNaming = assets.find((asset) => normalizeKey(asset.naming) === naming);
+    if (byNaming) return byNaming;
+  }
+
+  const composite = normalizeKey(`${incoming.campaign} ${incoming.assetName}`);
+  return assets.find((asset) => normalizeKey(`${asset.campaign} ${asset.assetName}`) === composite);
+}
+
+function normalizePriority(value) {
+  const text = String(value || "").toLowerCase();
+  if (text.includes("low")) return "Low";
+  if (text.includes("med")) return "Medium";
+  return "High";
+}
+
+function normalizeStatus(value) {
+  const text = String(value || "").toLowerCase();
+  if (text.includes("done") || text.includes("fatto")) return "Done";
+  if (text.includes("ready") || text.includes("pronto")) return "Ready";
+  if (text.includes("review")) return "Review";
+  if (text.includes("progress") || text.includes("wip") || text.includes("lavor")) return "Work in progress";
+  return "Draft";
+}
+
+function normalizeFormat(value) {
+  const text = String(value || "").toLowerCase();
+  if (text.includes("carousel")) return "Carousel";
+  if (text.includes("gif")) return "GIF";
+  if (text.includes("static") || text.includes("image") || text.includes("foto")) return "Static";
+  return "Video";
+}
+
+function normalizeCreativeType(value) {
+  const text = String(value || "").toLowerCase();
+  if (text.includes("ai")) return "UGC+AI";
+  if (text.includes("brand")) return "Brand";
+  return "UGC";
 }
 
 function handleMetaCsvImport(event) {

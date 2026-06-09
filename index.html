@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Dalfilo Creative Hub</title>
-    <link rel="stylesheet" href="./styles.css?v=20260529e" />
+    <link rel="stylesheet" href="./styles.css?v=20260608a" />
   </head>
   <body>
     <div class="app-shell">
@@ -25,8 +25,8 @@
 
         <section class="sync-card">
           <p class="eyebrow">Fonte</p>
-          <a href="https://docs.google.com/spreadsheets/d/1tp_ll9WE_uiV1Fy7wI7r_yUHo7cBE640XXKd0UKitws/edit?gid=2030630749#gid=2030630749" target="_blank" rel="noreferrer">Google Sheet ADV Pipeline</a>
-          <small>Snapshot locale con salvataggio nel browser. Pronto per collegamento Apps Script o API.</small>
+          <a href="https://docs.google.com/spreadsheets/d/1aK_UxQtLOcO8nWyi2T2_8fsp0qW7QLRfvTDk1psBWtc/edit?gid=1082250784#gid=1082250784" target="_blank" rel="noreferrer">Google Sheet ADV Pipeline completo</a>
+          <small>Importa il CSV del foglio completo per aggiornare o creare asset mantenendo visual e performance gia salvati.</small>
         </section>
       </aside>
 
@@ -38,10 +38,12 @@
           </div>
           <div class="actions">
             <button class="primary-button" type="button" id="newAssetButton" title="Crea un nuovo asset in produzione">+ Nuovo asset</button>
+            <button class="ghost-button" type="button" id="importPipelineCsv" title="Importa pipeline da CSV Google Sheet">Import Pipeline CSV</button>
             <button class="ghost-button" type="button" id="importMetaCsv" title="Importa export CSV da Meta Ads">Import Meta CSV</button>
             <button class="ghost-button" type="button" id="resetData" title="Ripristina i dati iniziali">Reset</button>
             <button class="ghost-button" type="button" id="exportCsv" title="Esporta pipeline in CSV">CSV</button>
             <button class="primary-button" type="button" id="exportJson" title="Esporta stato completo con visual">JSON</button>
+            <input id="pipelineCsvInput" type="file" accept=".csv,text/csv" hidden />
             <input id="metaCsvInput" type="file" accept=".csv,text/csv" hidden />
           </div>
         </header>
@@ -257,6 +259,10 @@
                 <input name="productCategory" type="text" placeholder="Percalle">
               </label>
               <label class="field">
+                <span>Country</span>
+                <input name="country" type="text" placeholder="ITA + DACH">
+              </label>
+              <label class="field">
                 <span>Campaign type</span>
                 <input name="campaignType" type="text" placeholder="Product Launch">
               </label>
@@ -284,6 +290,18 @@
             <label class="field full">
               <span>Hook first 2 sec</span>
               <textarea name="hook" rows="3" placeholder="Il primo frame, la promessa, il gesto o il testo che deve fermare lo scroll."></textarea>
+            </label>
+            <label class="field full">
+              <span>CTA</span>
+              <input name="cta" type="text" placeholder="Es. Scopri la collezione / Acquista ora">
+            </label>
+            <label class="field full">
+              <span>Copy prospecting</span>
+              <textarea name="prospectingMessage" rows="3" placeholder="Messaggio pensato per audience fredda."></textarea>
+            </label>
+            <label class="field full">
+              <span>Copy remarketing</span>
+              <textarea name="remarketingMessage" rows="3" placeholder="Messaggio pensato per audience calda / retargeting."></textarea>
             </label>
             <label class="field full">
               <span>Naming convention</span>
@@ -314,6 +332,6 @@
     </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="./app.js?v=20260529e"></script>
+    <script src="./app.js?v=20260608a"></script>
   </body>
 </html>
