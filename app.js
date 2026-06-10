@@ -745,7 +745,7 @@ function handlePipelineCsvImport(event) {
     saveAssets();
     populateFilters();
     render();
-    showToast(`${result.created} creati · ${result.updated} aggiornati da ${file.name}.`);
+    showToast(`${result.created} creati · ${result.updated} aggiornati dal tab ADV Pipeline.`);
     els.pipelineCsvInput.value = "";
   };
   reader.readAsText(file);
