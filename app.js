@@ -1,4 +1,4 @@
-const seedAssets = [
+const fallbackSeedAssets = [
   ["Festa della Mamma - Free Embroidery Phase 1", "22/04", "17/04", "High", "Sale / Push", "Free embroidery - UGC unboxing video", "Video", "UGC", "Percale", "Personal / emotional reveal of embroidery gift. Show stitching in first 2s.", "pr_ + rm_", "plp", "pr_it_bed_video_ugc_mamma26_unboxing_v1_plp", "Federica", "Done", "Unboxing DCA CPR EUR2.42-2.82 in Q1 - highest-efficiency gifting format."],
   ["Festa della Mamma - Free Embroidery Phase 1", "22/04", "17/04", "High", "Sale / Push", "Free embroidery - carousel gift ideas", "Carousel", "Brand", "", "Slide 1: Regala qualita, ricama amore. Each slide: product + price + embroidery detail.", "rm_", "hp", "rm_it_bed_carousel_brand_mamma26_giftideas_v1_hp", "Federica", "Done", "Carousel HP CPR EUR7.71 in Q1. Gift ideas carousel performed well last year."],
   ["Festa della Mamma - Free Embroidery Phase 1", "22/04", "17/04", "High", "Sale / Push", "Free embroidery - static v1 embroidery close-up", "Static", "Brand", "", "Extreme close-up on stitching thread. Warm, tactile feel. No logo overlay.", "rm_", "hp", "rm_it_bed_static_brand_mamma26_product_v1_hp", "Federica", "Done", "Static is the volume driver. Always run 2 variants."],
@@ -64,7 +64,12 @@ const benchmarks = {
   Carousel: "Discovery layer. Best on warm audience or HP, avoid cold PLP."
 };
 
-const storageKey = "dalfilo-creative-hub-v1";
+const seedAssets = Array.isArray(window.DALFILO_SEED_ASSETS)
+  ? window.DALFILO_SEED_ASSETS.map(normalizeAssetDefaults)
+  : fallbackSeedAssets.map(normalizeAssetDefaults);
+
+const storageKey = "dalfilo-creative-hub-v2";
+const legacyStorageKey = "dalfilo-creative-hub-v1";
 let assets = loadAssets();
 let selectedId = assets[0]?.id || null;
 let currentView = "production";
@@ -90,14 +95,71 @@ const els = {
 let namingTouched = false;
 
 function loadAssets() {
-  const saved = localStorage.getItem(storageKey);
-  if (!saved) return structuredClone(seedAssets);
+  const savedAssets = parseSavedAssets(storageKey);
+  if (savedAssets) return savedAssets.map(normalizeAssetDefaults);
+
+  const freshAssets = structuredClone(seedAssets);
+  const legacyAssets = parseSavedAssets(legacyStorageKey);
+  if (legacyAssets) mergePreservedAssetState(freshAssets, legacyAssets);
+  return freshAssets;
+}
+
+function parseSavedAssets(key) {
+  const saved = localStorage.getItem(key);
+  if (!saved) return null;
   try {
     const parsed = JSON.parse(saved);
-    return Array.isArray(parsed.assets) ? parsed.assets : structuredClone(seedAssets);
+    return Array.isArray(parsed.assets) ? parsed.assets : null;
   } catch {
-    return structuredClone(seedAssets);
+    return null;
   }
+}
+
+function normalizeAssetDefaults(asset) {
+  return {
+    id: asset.id || makeAssetId(),
+    campaign: asset.campaign || "",
+    goLive: asset.goLive || "",
+    deadline: asset.deadline || "",
+    country: asset.country || "",
+    priority: asset.priority || "High",
+    campaignType: asset.campaignType || "",
+    assetName: asset.assetName || "",
+    format: asset.format || "Video",
+    creativeType: asset.creativeType || "UGC",
+    productCategory: asset.productCategory || "",
+    productCluster: asset.productCluster || "",
+    hook: asset.hook || "",
+    cta: asset.cta || "",
+    prospectingMessage: asset.prospectingMessage || "",
+    remarketingMessage: asset.remarketingMessage || "",
+    funnel: asset.funnel || "pr_",
+    landing: asset.landing || "hp",
+    naming: asset.naming || "",
+    assignee: asset.assignee || "Federica",
+    status: asset.status || "Draft",
+    rationale: asset.rationale || "",
+    storytelling: asset.storytelling || "",
+    notes: asset.notes || "",
+    performance: asset.performance || null,
+    visual: asset.visual || "",
+    visualName: asset.visualName || ""
+  };
+}
+
+function mergePreservedAssetState(targetAssets, previousAssets) {
+  previousAssets.forEach((previous) => {
+    const match = targetAssets.find((asset) => {
+      const sameNaming = previous.naming && normalizeKey(asset.naming) === normalizeKey(previous.naming);
+      const sameComposite = normalizeKey(`${asset.campaign} ${asset.assetName}`) === normalizeKey(`${previous.campaign} ${previous.assetName}`);
+      return sameNaming || sameComposite;
+    });
+    if (!match) return;
+    match.visual = previous.visual || match.visual;
+    match.visualName = previous.visualName || match.visualName;
+    match.performance = previous.performance || match.performance;
+    match.notes = previous.notes || match.notes;
+  });
 }
 
 function saveAssets() {
@@ -235,6 +297,7 @@ function renderRows() {
         </div>
       </td>
       <td>${escapeHtml(asset.goLive || "-")}</td>
+      <td>${escapeHtml(asset.deadline || "-")}</td>
       <td>${escapeHtml(asset.country || "-")}</td>
       <td>${escapeHtml(asset.campaignType || "-")}</td>
       <td>${escapeHtml(asset.productCategory || "-")}</td>
@@ -972,17 +1035,35 @@ function parseCsv(text) {
   if (row.some((value) => value.trim())) lines.push(row);
   if (lines.length < 2) return [];
 
-  const headers = lines[0].map((header) => normalizeHeader(header));
-  return lines.slice(1).map((line) => headers.reduce((acc, header, index) => {
+  const headerIndex = findCsvHeaderIndex(lines);
+  if (headerIndex === -1) return [];
+
+  const headers = lines[headerIndex].map((header) => normalizeHeader(header));
+  return lines.slice(headerIndex + 1).map((line) => headers.reduce((acc, header, index) => {
     acc[header] = line[index] || "";
+    acc.__cells = line;
     return acc;
   }, {}));
+}
+
+function findCsvHeaderIndex(lines) {
+  return lines.findIndex((line) => {
+    const headers = line.map(normalizeHeader);
+    const hasCampaign = headers.some((header) => header.includes("campaign") || header.includes("campagna"));
+    const hasAsset = headers.some((header) => header.includes("asset"));
+    const hasFormat = headers.some((header) => header.includes("format") || header.includes("formato"));
+    return hasCampaign && hasAsset && hasFormat;
+  });
 }
 
 function findValue(row, candidates) {
   const normalizedCandidates = candidates.map(normalizeHeader);
   const key = normalizedCandidates.find((candidate) => row[candidate] !== undefined && row[candidate] !== "");
-  return key ? row[key] : "";
+  if (key) return row[key];
+
+  const rowKeys = Object.keys(row).filter((rowKey) => rowKey !== "__cells" && row[rowKey] !== "");
+  const fuzzyKey = rowKeys.find((rowKey) => normalizedCandidates.some((candidate) => rowKey.includes(candidate) || candidate.includes(rowKey)));
+  return fuzzyKey ? row[fuzzyKey] : "";
 }
 
 function normalizeHeader(value) {
