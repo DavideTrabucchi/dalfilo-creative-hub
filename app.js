@@ -48,6 +48,7 @@ const seedAssets = [
   rationale: row[15],
   notes: "",
   country: "",
+  productCluster: "",
   cta: "",
   prospectingMessage: "",
   remarketingMessage: "",
@@ -172,7 +173,20 @@ function unique(key) {
 function getFilteredAssets() {
   const query = els.search.value.trim().toLowerCase();
   return assets.filter((asset) => {
-    const text = [asset.campaign, asset.assetName, asset.naming, asset.hook, asset.rationale, asset.productCategory].join(" ").toLowerCase();
+    const text = [
+      asset.campaign,
+      asset.assetName,
+      asset.naming,
+      asset.hook,
+      asset.rationale,
+      asset.country,
+      asset.campaignType,
+      asset.productCategory,
+      asset.productCluster,
+      asset.cta,
+      asset.prospectingMessage,
+      asset.remarketingMessage
+    ].join(" ").toLowerCase();
     const matchesQuery = !query || text.includes(query);
     const matchesStatus = !els.statusFilter.value || asset.status === els.statusFilter.value;
     const matchesFormat = !els.formatFilter.value || asset.format === els.formatFilter.value;
@@ -210,17 +224,23 @@ function renderRows() {
   els.rows.innerHTML = filtered.map((asset) => `
     <tr class="${asset.id === selectedId ? "is-selected" : ""}" data-id="${asset.id}">
       <td>
-        <div class="asset-name">
-          <strong>${escapeHtml(asset.assetName)}</strong>
-          <small>${escapeHtml(asset.campaign)}</small>
-          <small>${escapeHtml(asset.naming)}</small>
+        <div class="asset-name campaign-cell">
+          <strong>${escapeHtml(asset.campaign || "-")}</strong>
+          <small>${escapeHtml(asset.assignee || "-")}</small>
         </div>
       </td>
+      <td>
+        <div class="asset-name">
+          <strong>${escapeHtml(asset.assetName)}</strong>
+        </div>
+      </td>
+      <td>${escapeHtml(asset.goLive || "-")}</td>
+      <td>${escapeHtml(asset.country || "-")}</td>
+      <td>${escapeHtml(asset.campaignType || "-")}</td>
+      <td>${escapeHtml(asset.productCategory || "-")}</td>
+      <td>${escapeHtml(asset.productCluster || "-")}</td>
       <td><span class="pill ${asset.format.toLowerCase()}">${escapeHtml(asset.format)}</span></td>
-      <td>${escapeHtml(asset.assignee || "-")}</td>
       <td><span class="pill ${asset.status.toLowerCase().replaceAll(" ", "-")}">${escapeHtml(asset.status)}</span></td>
-      <td>${escapeHtml(asset.deadline || "-")}</td>
-      <td><span class="perf-badge ${asset.performance ? "has-data" : ""}">${asset.performance ? escapeHtml(asset.performance.badge) : "-"}</span></td>
       <td><span class="visual-dot">${asset.visual ? `<img src="${asset.visual}" alt="">` : "..."}</span></td>
     </tr>
   `).join("");
@@ -251,10 +271,15 @@ function renderDetail() {
       </div>
       <div class="meta-grid">
         ${metaItem("Campagna", asset.campaign)}
-        ${metaItem("Funnel", `${asset.funnel} / ${asset.landing}`)}
         ${metaItem("Go live", asset.goLive)}
         ${metaItem("Deadline", asset.deadline)}
         ${metaItem("Country", asset.country)}
+        ${metaItem("Campaign type", asset.campaignType)}
+        ${metaItem("Product category", asset.productCategory)}
+        ${metaItem("Product cluster", asset.productCluster)}
+        ${metaItem("Funnel", asset.funnel)}
+        ${metaItem("Landing", asset.landing)}
+        ${metaItem("Naming", asset.naming)}
         ${metaItem("Owner", asset.assignee)}
         ${metaItem("Priorita", asset.priority)}
       </div>
@@ -399,6 +424,7 @@ function openEditAssetDrawer(asset) {
     format: asset.format,
     creativeType: asset.creativeType,
     productCategory: asset.productCategory,
+    productCluster: asset.productCluster,
     country: asset.country,
     cta: asset.cta,
     prospectingMessage: asset.prospectingMessage,
@@ -470,6 +496,7 @@ function buildAssetFromForm(formData, existingAsset = null) {
     format: String(formData.get("format") || "Video"),
     creativeType: String(formData.get("creativeType") || "UGC"),
     productCategory: String(formData.get("productCategory") || "").trim(),
+    productCluster: String(formData.get("productCluster") || "").trim(),
     country: String(formData.get("country") || "").trim(),
     hook: String(formData.get("hook") || "").trim(),
     cta: String(formData.get("cta") || "").trim(),
@@ -516,6 +543,7 @@ function duplicateAsset(asset) {
     format: asset.format,
     creativeType: asset.creativeType,
     productCategory: asset.productCategory,
+    productCluster: asset.productCluster,
     country: asset.country,
     cta: asset.cta,
     prospectingMessage: asset.prospectingMessage,
@@ -768,6 +796,7 @@ function normalizePipelineRow(row) {
     format: normalizeFormat(findValue(row, ["format", "formato", "asset format"])),
     creativeType: normalizeCreativeType(findValue(row, ["creative type", "tipo creativo", "creative", "creator type"])),
     productCategory: findValue(row, ["product category", "categoria prodotto", "category", "product", "prodotto"]),
+    productCluster: findValue(row, ["product cluster", "cluster prodotto", "cluster", "product family", "famiglia prodotto", "product subcategory", "sottocategoria prodotto"]),
     hook: findValue(row, ["hook direction", "hook", "first 2 sec", "first 2 seconds", "hook first 2 sec"]),
     cta: findValue(row, ["cta", "call to action", "call-to-action"]),
     prospectingMessage: findValue(row, ["prospecting", "copy prospecting", "message prospecting", "messaggio prospecting", "pr copy", "pr_ copy"]),
@@ -988,16 +1017,16 @@ function exportJson() {
 }
 
 function exportCsv() {
-  const headers = ["campaign", "goLive", "deadline", "priority", "campaignType", "assetName", "format", "creativeType", "productCategory", "hook", "funnel", "landing", "naming", "assignee", "status", "rationale", "notes", "visualName", "performanceBadge", "spend", "cpm", "ctr", "results", "cpr"];
+  const headers = ["campaign", "goLive", "deadline", "country", "priority", "campaignType", "assetName", "format", "creativeType", "productCategory", "productCluster", "hook", "cta", "prospectingMessage", "remarketingMessage", "funnel", "landing", "naming", "assignee", "status", "rationale", "notes", "visualName", "performanceBadge", "spend", "cpm", "ctr", "results", "cpr"];
   const rows = [headers, ...assets.map((asset) => headers.map((key) => asset[key] || ""))];
   rows.slice(1).forEach((row, index) => {
     const perf = assets[index].performance || {};
-    row[18] = perf.badge || "";
-    row[19] = perf.spend || "";
-    row[20] = perf.cpm || "";
-    row[21] = perf.ctr || "";
-    row[22] = perf.results || "";
-    row[23] = perf.cpr || "";
+    row[23] = perf.badge || "";
+    row[24] = perf.spend || "";
+    row[25] = perf.cpm || "";
+    row[26] = perf.ctr || "";
+    row[27] = perf.results || "";
+    row[28] = perf.cpr || "";
   });
   const csv = rows.map((row) => row.map(csvCell).join(",")).join("\n");
   downloadFile(`dalfilo-creative-pipeline-${dateStamp()}.csv`, csv, "text/csv");

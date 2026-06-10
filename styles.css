@@ -336,6 +336,7 @@ button {
 
 table {
   width: 100%;
+  min-width: 1180px;
   border-collapse: collapse;
   font-size: 0.86rem;
 }
@@ -370,6 +371,11 @@ tbody tr.is-selected {
 .asset-name {
   display: grid;
   gap: 0.28rem;
+  max-width: 16rem;
+}
+
+.campaign-cell {
+  max-width: 14rem;
 }
 
 .asset-name strong {

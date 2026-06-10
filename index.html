@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Dalfilo Creative Hub</title>
-    <link rel="stylesheet" href="./styles.css?v=20260608a" />
+    <link rel="stylesheet" href="./styles.css?v=20260609a" />
   </head>
   <body>
     <div class="app-shell">
@@ -109,12 +109,15 @@
                 <table>
                   <thead>
                     <tr>
+                      <th>Campaign / Moment</th>
                       <th>Asset</th>
+                      <th>Go Live</th>
+                      <th>Country</th>
+                      <th>Campaign Type</th>
+                      <th>Product Category</th>
+                      <th>Product Cluster</th>
                       <th>Format</th>
-                      <th>Owner</th>
                       <th>Status</th>
-                      <th>Deadline</th>
-                      <th>Perf.</th>
                       <th>Visual</th>
                     </tr>
                   </thead>
@@ -259,6 +262,10 @@
                 <input name="productCategory" type="text" placeholder="Percalle">
               </label>
               <label class="field">
+                <span>Product cluster</span>
+                <input name="productCluster" type="text" placeholder="Botanica / Free Embroidery">
+              </label>
+              <label class="field">
                 <span>Country</span>
                 <input name="country" type="text" placeholder="ITA + DACH">
               </label>
@@ -332,6 +339,6 @@
     </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="./app.js?v=20260608a"></script>
+    <script src="./app.js?v=20260609a"></script>
   </body>
 </html>
