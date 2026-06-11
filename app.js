@@ -68,8 +68,8 @@ const seedAssets = Array.isArray(window.DALFILO_SEED_ASSETS)
   ? window.DALFILO_SEED_ASSETS.map(normalizeAssetDefaults)
   : fallbackSeedAssets.map(normalizeAssetDefaults);
 
-const storageKey = "dalfilo-creative-hub-v2";
-const legacyStorageKey = "dalfilo-creative-hub-v1";
+const storageKey = "dalfilo-creative-hub-v3";
+const legacyStorageKeys = ["dalfilo-creative-hub-v2", "dalfilo-creative-hub-v1"];
 let assets = loadAssets();
 let selectedId = assets[0]?.id || null;
 let currentView = "production";
@@ -99,7 +99,7 @@ function loadAssets() {
   if (savedAssets) return savedAssets.map(normalizeAssetDefaults);
 
   const freshAssets = structuredClone(seedAssets);
-  const legacyAssets = parseSavedAssets(legacyStorageKey);
+  const legacyAssets = legacyStorageKeys.map(parseSavedAssets).find(Boolean);
   if (legacyAssets) mergePreservedAssetState(freshAssets, legacyAssets);
   return freshAssets;
 }
@@ -841,7 +841,7 @@ function applyPipelineRows(rows) {
 }
 
 function normalizePipelineRow(row) {
-  const assetName = findValue(row, ["asset name", "asset", "creative", "creative name", "nome asset", "contenuto"]);
+  const assetName = findValue(row, ["asset focus", "focus asset", "asset name", "asset", "creative", "creative name", "nome asset", "contenuto"]);
   const campaign = findValue(row, ["campaign / moment", "campaign", "moment", "campagna", "fase", "initiative"]);
   const naming = findValue(row, ["naming convention", "naming", "ad name", "ad_name", "nome inserzione"]);
 
